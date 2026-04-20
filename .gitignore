@@ -1,3 +1,6 @@
 /data
 
 *.log
+
+*.pkl
+/experiment_info.json

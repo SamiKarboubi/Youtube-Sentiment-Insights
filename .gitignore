@@ -4,3 +4,5 @@
 
 *.pkl
 /experiment_info.json
+
+.env

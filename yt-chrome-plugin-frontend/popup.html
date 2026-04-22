@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>YT Sentiment Insights</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      width: 360px;
+      background: #0f0f0f;
+      color: #fff;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      font-size: 14px;
+    }
+
+    /* ── Header ── */
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 14px 18px;
+      background: #161616;
+      border-bottom: 2px solid #ff0000;
+    }
+    .header svg { width: 26px; height: 26px; flex-shrink: 0; }
+    .header h1 { font-size: 15px; font-weight: 700; letter-spacing: 0.2px; }
+    .header h1 span { color: #ff0000; }
+
+    /* ── Content ── */
+    .content { padding: 16px 18px; }
+
+    /* ── Status messages ── */
+    .status-msg {
+      text-align: center;
+      padding: 28px 0 20px;
+      color: #888;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+    .status-msg .icon { font-size: 36px; margin-bottom: 10px; }
+
+    /* ── Button ── */
+    .btn {
+      width: 100%;
+      padding: 11px;
+      background: #ff0000;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .btn:hover:not(:disabled) { background: #cc0000; }
+    .btn:disabled { background: #333; color: #666; cursor: not-allowed; }
+    .btn.secondary { background: #222; margin-top: 10px; }
+    .btn.secondary:hover:not(:disabled) { background: #2a2a2a; }
+
+    /* ── Loader ── */
+    .loader { display: none; text-align: center; padding: 28px 0; color: #888; font-size: 13px; }
+    .spinner {
+      width: 30px; height: 30px;
+      border: 3px solid #2a2a2a;
+      border-top-color: #ff0000;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin: 0 auto 12px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Error ── */
+    .error-box {
+      display: none;
+      background: #1a0a0a;
+      border: 1px solid #7f1d1d;
+      border-radius: 8px;
+      padding: 11px 13px;
+      color: #fca5a5;
+      font-size: 12px;
+      margin-bottom: 12px;
+      line-height: 1.5;
+    }
+
+    /* ── Card ── */
+    .card {
+      background: #1a1a1a;
+      border-radius: 8px;
+      padding: 13px 15px;
+      margin-bottom: 10px;
+    }
+
+    /* ── Video info ── */
+    .video-title {
+      font-size: 13px;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-bottom: 3px;
+    }
+    .video-meta { font-size: 11px; color: #666; }
+
+    /* ── Sentiment grid ── */
+    .sentiment-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+    .s-card {
+      background: #1a1a1a;
+      border-radius: 8px;
+      padding: 12px 8px;
+      text-align: center;
+      border-top: 3px solid transparent;
+    }
+    .s-card.pos { border-top-color: #22c55e; }
+    .s-card.neu { border-top-color: #94a3b8; }
+    .s-card.neg { border-top-color: #ef4444; }
+    .s-card .count { font-size: 24px; font-weight: 700; }
+    .s-card.pos .count { color: #22c55e; }
+    .s-card.neu .count { color: #94a3b8; }
+    .s-card.neg .count { color: #ef4444; }
+    .s-card .s-label { font-size: 11px; color: #666; margin: 2px 0; }
+    .s-card .s-pct { font-size: 12px; color: #aaa; font-weight: 600; }
+
+    /* ── Progress bars ── */
+    .bar-row { margin-bottom: 9px; }
+    .bar-row:last-child { margin-bottom: 0; }
+    .bar-meta {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      color: #aaa;
+      margin-bottom: 5px;
+    }
+    .bar-track {
+      height: 5px;
+      background: #2a2a2a;
+      border-radius: 999px;
+      overflow: hidden;
+    }
+    .bar-fill {
+      height: 100%;
+      border-radius: 999px;
+      width: 0%;
+      transition: width 0.5s ease;
+    }
+    .bar-fill.pos { background: #22c55e; }
+    .bar-fill.neu { background: #94a3b8; }
+    .bar-fill.neg { background: #ef4444; }
+
+    /* ── Chart ── */
+    .chart-label {
+      font-size: 11px;
+      color: #555;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      margin-bottom: 10px;
+    }
+    .chart-img { width: 100%; border-radius: 6px; display: block; }
+
+    /* ── Results ── */
+    #results { display: none; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <svg viewBox="0 0 24 24" fill="#ff0000">
+      <path d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.6 12 3.6 12 3.6s-7.5 0-9.4.5a3 3 0 0 0-2.1 2.1C0 8.1 0 12 0 12s0 3.9.5 5.8a3 3 0 0 0 2.1 2.1c1.9.5 9.4.5 9.4.5s7.5 0 9.4-.5a3 3 0 0 0 2.1-2.1C24 15.9 24 12 24 12s0-3.9-.5-5.8zM9.6 15.6V8.4l6.3 3.6-6.3 3.6z"/>
+    </svg>
+    <h1>YT <span>Sentiment</span> Insights</h1>
+  </div>
+
+  <div class="content">
+
+    <!-- Not on YouTube -->
+    <div id="not-youtube" class="status-msg" style="display:none;">
+      <div class="icon">📺</div>
+      <p>Navigate to a YouTube video<br>to analyze its comments.</p>
+    </div>
+
+    <!-- Analyze -->
+    <div id="action-section" style="display:none;">
+      <button class="btn" id="btn-analyze">Analyze Comments</button>
+    </div>
+
+    <!-- Loader -->
+    <div class="loader" id="loader">
+      <div class="spinner"></div>
+      <p id="loader-text">Fetching comments...</p>
+    </div>
+
+    <!-- Error -->
+    <div class="error-box" id="error-box"></div>
+
+    <!-- Results -->
+    <div id="results">
+      <div class="card">
+        <div class="video-title" id="video-title">—</div>
+        <div class="video-meta" id="video-meta">—</div>
+      </div>
+
+      <div class="sentiment-grid">
+        <div class="s-card pos">
+          <div class="count" id="count-pos">0</div>
+          <div class="s-label">Positive</div>
+          <div class="s-pct" id="pct-pos">0%</div>
+        </div>
+        <div class="s-card neu">
+          <div class="count" id="count-neu">0</div>
+          <div class="s-label">Neutral</div>
+          <div class="s-pct" id="pct-neu">0%</div>
+        </div>
+        <div class="s-card neg">
+          <div class="count" id="count-neg">0</div>
+          <div class="s-label">Negative</div>
+          <div class="s-pct" id="pct-neg">0%</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="bar-row">
+          <div class="bar-meta"><span>Positive</span><span id="bar-pct-pos">0%</span></div>
+          <div class="bar-track"><div class="bar-fill pos" id="bar-pos"></div></div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-meta"><span>Neutral</span><span id="bar-pct-neu">0%</span></div>
+          <div class="bar-track"><div class="bar-fill neu" id="bar-neu"></div></div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-meta"><span>Negative</span><span id="bar-pct-neg">0%</span></div>
+          <div class="bar-track"><div class="bar-fill neg" id="bar-neg"></div></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="chart-label">Sentiment Distribution</div>
+        <img class="chart-img" id="chart-img" src="" alt="Sentiment chart" />
+      </div>
+
+      <button class="btn secondary" id="btn-reanalyze">Analyze Again</button>
+    </div>
+
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
